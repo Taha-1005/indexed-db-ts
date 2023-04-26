@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import './Styles.css';
 
 const idb = window.indexedDB;
@@ -8,42 +8,46 @@ const idb = window.indexedDB;
 //   foodProductName: string;
 // };
 
-const createRecipeCollectionInIndexedDB = () => {
-  if (!idb) {
-    console.log('no IDB');
-    return;
-  }
-
-  console.log(idb);
-
-  const request = idb.open('restaurant-db', 2);
-
-  request.onerror = (event) => {
-    console.log('Error', event);
-    console.log('Error with indexed db');
-  };
-
-  request.onupgradeneeded = (event) => {
-    // some change like make a new user collection
-
-    const db = request.result;
-
-    if (!db.objectStoreNames.contains('recipes')) {
-      // object store is a collection like a table in a normal DB
-      // keyPath is used in the put method and matches with the keyPath. It should be unique
-      // put is upsert
-      db.createObjectStore('recipes', { keyPath: 'FoodProductId' });
+const createRecipeCollectionInIndexedDB = new Promise<string>(
+  (resolve, reject) => {
+    if (!idb) {
+      console.log('no IDB');
+      return;
     }
-  };
 
-  request.onsuccess = () => {
-    // the data / collection has been created or we can add some data here
-    console.log('Database opened successfully.');
-  };
-};
+    // console.log('In create Recipe Data');
+
+    const request = idb.open('restaurant-db', 2);
+
+    request.onerror = (event) => {
+      console.log('Error', event);
+      console.log('Error with indexed db');
+      reject('error occured');
+    };
+
+    request.onupgradeneeded = () => {
+      // some change like make a new user collection
+
+      const db = request.result;
+
+      if (!db.objectStoreNames.contains('recipes')) {
+        // object store is a collection like a table in a normal DB
+        // keyPath is used in the put method and matches with the keyPath. It should be unique
+        // put is upsert
+        db.createObjectStore('recipes', { keyPath: 'FoodProductId' });
+      }
+    };
+
+    request.onsuccess = () => {
+      // the data / collection has been created or we can add some data here
+      console.log('Database opened successfully.');
+      resolve('Database opened');
+    };
+  }
+);
 
 function Recipes() {
-  // const [recipeData, setRecipeData] = useState<any>();
+  const [recipeData, setRecipeData] = useState<any>(null);
 
   function storeDataIntoIndexedDb(recipeData: any) {
     const dbPromise = idb.open('restaurant-db', 2);
@@ -57,16 +61,16 @@ function Recipes() {
           const db = dbPromise.result;
           const tx = db.transaction('recipes', 'readwrite');
           const recipeStore = tx.objectStore('recipes');
-          const recipeQuery = recipeStore.put(recipe);
+          const recipeQueryToPut = recipeStore.put(recipe);
 
-          recipeQuery.onsuccess = () => {
+          recipeQueryToPut.onsuccess = () => {
             tx.oncomplete = () => {
               db.close();
               // console.log('Following recipe added:' + recipe.FoodProductId);
             };
           };
 
-          recipeQuery.onerror = (event) => {
+          recipeQueryToPut.onerror = (event) => {
             console.log(
               'Error occured while storing data into indexed Db:' +
                 recipe.FoodProductId
@@ -81,26 +85,92 @@ function Recipes() {
     };
   }
 
-  useEffect(() => {
-    createRecipeCollectionInIndexedDB();
+  const getAllRecipes = new Promise<any>((resolve, reject) => {
+    // console.log('here in getting all recipes from Indexed DB');
+    const dbPromise = idb.open('restaurant-db', 2);
+    let data: any = null;
+
+    dbPromise.onsuccess = () => {
+      try {
+        const db = dbPromise.result;
+        const tx = db.transaction('recipes', 'readonly');
+        const recipeStore = tx.objectStore('recipes');
+
+        const recipeQuery = recipeStore.getAll();
+        recipeQuery.onsuccess = () => {
+          // console.log(recipeQuery.result);
+          // return recipeQuery.result;
+          resolve(recipeQuery.result);
+        };
+
+        recipeQuery.onerror = (event) => {
+          console.log(
+            'Error occured while fetching data from recipes Object Store'
+          );
+          console.log(event);
+          reject(null);
+        };
+
+        tx.oncomplete = () => {
+          db.close();
+        };
+      } catch (e: any) {
+        console.log('Exception occured');
+        console.log(e);
+      }
+    };
+  });
+
+  const fetchDataFromApi = new Promise<string>((resolve, reject) => {
+    // console.log('here in fetch');
     fetch('http://localhost:8000/recipes', {
       method: 'GET',
     })
       .then((res) => res.json())
       .then(
         (result) => {
-          console.log('The data has been fetched successfully');
-          console.log(result);
+          console.log('The data has been fetched successfully from API');
+          // console.log(result);
           storeDataIntoIndexedDb(result);
+          resolve('Data stored successfully.');
         },
         (error) => {
-          console.log('There is an error in fetching the recipe data');
+          console.log('There is an error in fetching the recipe data from API');
           console.log(error);
+          reject('Error occured in fetching the data from API');
         }
       );
+  });
+
+  useEffect(() => {
+    const create = async () => {
+      await createRecipeCollectionInIndexedDB;
+      await fetchDataFromApi;
+      const data = await getAllRecipes;
+      // console.log(data);
+      setRecipeData(data);
+    };
+    // createRecipeCollectionInIndexedDB.then(() =>
+    //   fetchDataFromApi.then(() => {
+    //     console.log('here in setDta');
+    //     getAllRecipes();
+    //   })
+    // );
+    create().catch(console.error);
+    // console.log(recipeData);
   }, []);
 
-  return <div>Hello these are the recipes</div>;
+  return (
+    <div className='recipes'>
+      <div className='recipe_cards'>
+        {recipeData &&
+          recipeData.map((recipe: any) => (
+            <div key={recipe.FoodProductId}>{recipe.FoodProductId}</div>
+          ))}
+      </div>
+      <div></div>
+    </div>
+  );
 }
 
 export default Recipes;

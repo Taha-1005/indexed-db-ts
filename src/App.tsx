@@ -151,7 +151,7 @@ function App() {
       };
 
       users.onerror = () => {
-        alert('Error occured data while loading initial data');
+        alert('Error occ  ured data while loading initial data');
       };
 
       tx.oncomplete = () => {
@@ -161,8 +161,8 @@ function App() {
   };
 
   useEffect(() => {
-    createCollectionsInIndexedDB();
-    getAllData();
+    // createCollectionsInIndexedDB();
+    // getAllData();
   }, []);
 
   return (
