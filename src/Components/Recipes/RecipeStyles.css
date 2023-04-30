@@ -1,0 +1,11 @@
+.recipes {
+  display: flex;
+  flex-direction: row;
+}
+
+.recipe_cards {
+}
+
+.recipe_order {
+  margin-left: 500px;
+}
