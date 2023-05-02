@@ -288,7 +288,7 @@ function Recipes() {
     console.log('Sending');
     allOrdersInDb.map(async (order: Order) => {
       await sendOrderToApi(order)
-        .then(async () => {
+        .then(() => {
           deleteOrderFromIndexedDb(order.OrderId);
           setOrderDataFetch((orderDataFetch: number) => orderDataFetch + 1);
         })
