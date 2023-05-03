@@ -42,7 +42,7 @@ function App() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [allUserData, setAllUsersData] = useState([]);
+  const [allUserData, setAllUsersData] = useState<any>([]);
   const [addUser, setAddUser] = useState(false);
   const [editUser, setEditUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<null | { id: any }>({
@@ -146,8 +146,8 @@ function App() {
 
       const users = userData.getAll();
 
-      users.onsuccess = (query) => {
-        setAllUsersData(query.srcElement.result);
+      users.onsuccess = () => {
+        setAllUsersData(users.result);
       };
 
       users.onerror = () => {
